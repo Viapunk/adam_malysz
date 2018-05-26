@@ -22,7 +22,7 @@ argparser.add_argument("--index_list", type=str, help="Path to file"
 
 argparser.add_argument("-t", "--timeout", type=int, help="Timeout between "
                                                          "each ssh command",
-                       default=2)
+                       default=0.5)
 
 argparser.add_argument("-k", "--key", type=str,
                        help="Path to private ssh key file.")
@@ -38,7 +38,7 @@ settings = argparser.parse_args()
 
 if settings.key:
     rsakey = paramiko.RSAKey.from_private_key_file(settings.key)
-result_list = []
+result_list = set()
 index_list = []
 
 client = paramiko.SSHClient()
@@ -66,7 +66,7 @@ else:
 
 for pattern in settings.patterns:
 	print("Searching for {} pattern.".format(pattern))
-	for index in index_list[:20]:
+	for index in index_list:
 		print("Mining data from {} student.".format(index))
 		try:
 			stdin, stdout, stderr = client.exec_command(
@@ -77,15 +77,15 @@ for pattern in settings.patterns:
 			print("An error ocurred when trying to mine data: {}".format(e))
 		stdout._set_mode('b')
 		for line in stdout.readlines():
-			result_list.append(line)
+			result_list.add(line)
 
 with open(settings.output, "ab") as f:
     for line in result_list:
         f.write(line)
 
-#with open(settings.output, "r") as f:
-#    fdata = f.read()
-#    fdata.replace("deadbeef", "\n")
+with open(settings.output, "r") as f:
+    fdata = f.read()
+    fdata.replace("deadbeef", "\n")
 
-#with open(settings.output, "w") as f:
-#    f.write(fdata)
+with open(settings.output, "w") as f:
+    f.write(fdata)
