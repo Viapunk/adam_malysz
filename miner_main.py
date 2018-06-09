@@ -48,22 +48,22 @@ class adam_malysz(object):
 													 help='Program purpose.', default='search')
 
 		argparser.add_argument("patterns", nargs="*", help="Patterns to search "
-																											 "or file path to download.")
+														"or file path to download.")
 
 		argparser.add_argument("username", help="University login.", type=str)
 
 		argparser.add_argument("--index_list", type=str, help="Path to file"
-																													"with students' index numbers")
+														"with students' index numbers")
 
 		argparser.add_argument("-t", "--timeout", type=int,
 													 help="Timeout between each ssh command",
-													 default=0.5)
+													 default=0.02)
 
 		argparser.add_argument("-k", "--key", type=str,
 													 help="Path to private ssh key file.")
 
 		argparser.add_argument("-o", "--output", type=str, help="Path to output "
-																														"file, only in download mode.",
+													 "file, only in download mode.",
 													 default=os.path.join(os.getcwd(), "output.txt"))
 
 		argparser.add_argument("-v", "--verbose", action="store_true",
@@ -79,7 +79,7 @@ class adam_malysz(object):
 		""" Writes result data to a file."""
 		with open(self.settings.output, "ab") as f:
 			for line in self.result_list:
-				f.write(line)
+				f.write(line.encode())
 
 		with open(self.settings.output, "r") as f:
 			fdata = f.read()
@@ -93,13 +93,15 @@ class adam_malysz(object):
 				specified, It will generate list with all available indexes with
 				proper permissions.
 		"""
+
 		if self.settings.index_list is None:
 			self.make_connection()
 			result = self.execute_remote_command("ls -la /home/PJWSTK/")
-			for line in result[3:]:
+			for line in result:
 				if len(re.findall("(rwx)|(r-x)$", line.split()[0])):
-					self.index_list.append(line.split()[8])
-
+					number = line.split()[8][1:]
+					if number.isdigit() and int(number) < int(self.settings.username[1:]):
+							self.index_list.append(line.split()[8])
 		else:
 			with open(str(self.settings.index_list), 'r') as f:
 				self.index_list = [line.replace("\n", "") for line in f]
@@ -123,13 +125,12 @@ class adam_malysz(object):
 				print("Mining data from {} student.".format(index))
 				try:
 					result = self.execute_remote_command(find_command.format(index,
-																																	 pattern))
+																																	   pattern))
 					time.sleep(self.settings.timeout)
 				except SSHException as e:
-					print(
-						"An error ocurred when trying to mine data: {}"
-							.format(e))
-				self.result_list = set(line for line in result)
+					print("An error ocurred when trying to mine data: {}".format(e))
+				for line in result:
+					self.result_list.add(line)
 
 	def execute_remote_command(self, command, silent=False):
 		"""
@@ -143,7 +144,6 @@ class adam_malysz(object):
 		- [list<str>] List containing lines returned by executed command
 		"""
 		stdin, stdout, stderr = self.client.exec_command(command)
-		#stdout._set_mode('b')
 		if not silent:
 			return stdout.readlines()
 
@@ -154,6 +154,6 @@ if __name__ == "__main__":
 	skoczek = adam_malysz()
 	skoczek.parse_arguments()
 	skoczek.prepare_data()
-	skoczek.make_connection()
 	skoczek.krec_malysza()
 	skoczek.close_connection()
+	skoczek.write_data_to_file()
