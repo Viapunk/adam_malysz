@@ -10,5 +10,5 @@
 
 ## To do:
 * add silent mode
-* add logging and more logging options
+* add logging and verbose logging options
 * add downloading option
